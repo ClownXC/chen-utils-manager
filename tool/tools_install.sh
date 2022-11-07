@@ -144,11 +144,11 @@ get_deploy_nodes
 is_module_in_config ${TOOL}
 if [ $? -eq 0 ]; then
     components=$(get_all_component_of_module ${TOOL})
-    # # 目前需要首先配置 ssh 免密
-    $(is_compponent_in_module ${COMMON} "ssh")
-    if [ $? -eq 0 ]; then
-        sh ${COMMON_PATH}/ssh/ssh_login.sh root 3494269
-    fi
+    # # # 目前需要首先配置 ssh 免密
+    # $(is_compponent_in_module ${COMMON} "ssh")
+    # if [ $? -eq 0 ]; then
+    #     sh ${COMMON_PATH}/ssh/ssh_login.sh root 3494269
+    # fi
 
     echo "-------------------开始安装 Tool 模块-------------------"
     for component in ${components}; do
@@ -166,10 +166,10 @@ if [ $? -eq 0 ]; then
             xcall "${vim_nodes}" ${USER} "yum -y install ansible"
         elif [ ${component} == "oh-my-zsh" ]; then
             echo "install component: ${component}"
-            declare -A hosts_properties_map=$(get_properties_of_component oh-my-zsh)
-            omz_nodes=$(get_component_nodes ${hosts_properties_map["node"]})
+            declare -A omz_properties_map=$(get_properties_of_component oh-my-zsh)
+            omz_nodes=$(get_component_nodes ${omz_properties_map["node"]})
             echo "oh-my-zsh nodes: ${omz_nodes}"
-            for node in ${hosts_nodes}; do
+            for node in ${omz_nodes}; do
                 scp ${TOOL_PATH}/zsh/${ZSH_INSTALL_FILE} ${USER}@${node}:${ZSH_RES_HOME}
                 remote_call "${node}" ${USER} "sh ${ZSH_RES_HOME}/${ZSH_INSTALL_FILE}"
             done

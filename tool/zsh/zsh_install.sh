@@ -1,6 +1,6 @@
 #!/usr/bin/expect
 
-ZSH_RES_HOME="/root"
+ZSH_RES_HOME="/root/zsh"
 USER_HOME="/root"
 
 
@@ -20,12 +20,15 @@ if ! command -v zsh >/dev/null 2>&1; then
 fi
 
 echo "开始下载 zsh 安装脚本，请稍等～～～"
-wget -P /${ZSH_RES_HOME} https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -T 3 -t 3 -q -O - 
+[[ ! -d ${ZSH_RES_HOME} ]] && mkdir -p ${ZSH_RES_HOME} > /dev/null
+wget -P ${ZSH_RES_HOME} https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -T 3 -t 3 -q -O - 
 # if [ ! -e ${ZSH_RES_HOME}/install.sh ]; then
 if [ $? -ne 0 ]; then
     echo "Github 连接失败"
     echo "改换国内的镜像源"
-    wget -P /${ZSH_RES_HOME} https://gitee.com/mirrors/oh-my-zsh/raw/master/tools/install.sh
+    if [ ! -f ${ZSH_RES_HOME}/install.sh ];then
+        wget -P ${ZSH_RES_HOME} https://gitee.com/mirrors/oh-my-zsh/raw/master/tools/install.sh -q
+    fi
 fi
 
 
@@ -47,12 +50,12 @@ if ! command -v expect >/dev/null 2>&1; then
     yum -y install expect &> /dev/null
 fi
 
-spawn sh install.sh &> /dev/null
-expect {
-    "[Y/n]" {send "Y\n"}
-}
-expect eof
-
+# spawn sh install.sh &> /dev/null
+# expect {
+#     "[Y/n]" {send "Y\n"}
+# }
+# expect eof
+sh ${ZSH_RES_HOME}/install.sh > /dev/null
 
 
 if [ $? -eq 0 ]; then
@@ -72,5 +75,5 @@ if [ $? -eq 0 ]; then
     echo "zsh-autosuggestions 成功"
 fi
 sed -i 's/plugins=(git)/plugins=(sublime z history-substring-search git zsh-autosuggestions zsh-syntax-highlighting)/' ${USER_HOME}/.zshrc
-
+sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="ys"/' ${USER_HOME}/.zshrc
 source ${USER_HOME}/.zshrc
