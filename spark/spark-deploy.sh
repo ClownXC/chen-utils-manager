@@ -164,6 +164,16 @@ function remote_call
     xcall $1 $2 $3
 }
 
+function wget_process 
+{
+    wget_node=$1
+    xcall "${wget_node}" $2 "cp -v /usr/share/locale/zh_CN/LC_MESSAGES/wget.mo /usr/share/locale/zh_CN/LC_MESSAGES/wget.mo.bak20140827"
+    xcall "${wget_node}" $2 "msgunfmt /usr/share/locale/zh_CN/LC_MESSAGES/wget.mo -o - | sed 's/eta(英国中部时间)/ETA/' | msgfmt - -o /tmp/zh_CN.mo"
+    xcall "${wget_node}" $2 "cp -f -v /tmp/zh_CN.mo /usr/share/locale/zh_CN/LC_MESSAGES/wget.mo"   
+
+
+}
+
 
 ###### main ######
 
@@ -174,6 +184,7 @@ if [ ! -e ${HOME_DIR}/${CONFIG_FILE} ]; then
     exit 1
 fi
 get_deploy_nodes
+# wget_process "${WORKER_NODE_LIST}" ${USER}
 
 
 
@@ -191,6 +202,7 @@ fi
 #----------------------------------------------------------Tool----------------------------------------------------------
 
 is_module_in_config ${TOOL}
+echo "${TOOL_PATH}/${TOOL_INSTALL_FILE}"
 if [ $? -eq 0 ]; then
     if [ ! -e ${TOOL_PATH}/${TOOL_INSTALL_FILE} ]; then
         echo -e "${RED} Error: ${CONFIG_FILE} is not exist, Please Check......${COLOR_END}"
@@ -216,24 +228,36 @@ if [ $? -eq 0 ]; then
     spark_home=${spark_properties_map["spark_home"]}
     echo "spark_home: ${spark_home}"
     
-    spark_version=${spark_properties_map["version"]}
-    echo "spark_version: ${spark_version}"
+    spark_version=${spark_properties_map["spark_version"]}
+    hadoop_version=${spark_properties_map["hadoop_version"]}
     spark_nodes=(${spark_worker_nodes} ${spark_master_nodes})
     declare -A java_properties_map=$(get_properties_of_component java)  
     is_module_in_config ${COMMON}
     spark_java_home=${spark_properties_map["java_home"]}
 
+
+    spark_install_mode=${spark_properties_map["install_mode"]}
+    spark_hadoop_version=spark-${spark_version}-bin-${hadoop_version}
+    echo "spark install mode: ${spark_install_mode}"
+
     for spark_node in ${spark_nodes[@]}; do
-        echo "spark node: ${spark_node}"
+        echo "install node===: ${spark_node}"
         remote_call ${spark_node} ${USER} "[[ ! -d ${spark_home} ]] && mkdir -p ${spark_home} "
-        scp ${pkg_path}/${spark_version}.tgz ${USER}@${master_node}:${spark_home}
-        tar -zxf ${spark_home}/${spark_version}.tgz -C ${spark_home}
-        remote_call ${spark_node} ${USER} "cp ${spark_home}/${spark_version}/conf/workers.template ${spark_home}/${spark_version}/conf/workers"
-        remote_call ${spark_node} ${USER} "cp ${spark_home}/${spark_version}/conf/spark-env.sh.template ${spark_home}/${spark_version}/conf/spark-env.sh"
+        if [ "${spark_install_mode}" == "local" ]; then
+            scp ${pkg_path}/${spark_version}.tgz ${USER}@${spark_node}:${spark_home}
+        elif [ "${spark_install_mode}" == "remote" ]; then
+            remote_call ${spark_node} ${USER} "[[ -f \"${spark_home}/${spark_hadoop_version}.tgz\" ]] && rm -f ${spark_home}/${spark_hadoop_version}.tgz "
+            echo "node: ${spark_node} 正在下载: ${spark_hadoop_version}.tgz, waiting..."
+            remote_call ${spark_node} ${USER} "wget -P ${spark_home} https://note3.oss-cn-hangzhou.aliyuncs.com/${spark_hadoop_version}.tgz -q"
+        fi
+
+        remote_call ${spark_node} ${USER} "tar -zxf ${spark_home}/${spark_hadoop_version}.tgz -C ${spark_home} "
+        remote_call ${spark_node} ${USER} "cp ${spark_home}/${spark_hadoop_version}/conf/workers.template ${spark_home}/${spark_hadoop_version}/conf/workers"
+        remote_call ${spark_node} ${USER} "cp ${spark_home}/${spark_hadoop_version}/conf/spark-env.sh.template ${spark_home}/${spark_hadoop_version}/conf/spark-env.sh"
         # # 目前只支持一个 master
-        remote_call ${spark_node} ${USER} "sed -i '/^localhost/d' ${spark_home}/${spark_version}/conf/workers; echo $(cat /etc/hosts | grep ${spark_master_nodes} | awk 'NR==1{print $1}') >> ${spark_home}/${spark_version}/conf/workers"
-        remote_call ${spark_node} ${USER} "echo SPARK_MASTER_HOST=$(cat /etc/hosts | grep ${spark_master_nodes} | awk 'NR==1{print $1}') >> ${spark_home}/${spark_version}/conf/spark-env.sh"
-        remote_call ${spark_node} ${USER} "echo export JAVA_HOME=${spark_java_home} >> ${spark_home}/${spark_version}/conf/spark-env.sh"
+        remote_call ${spark_node} ${USER} "sed -i '/^localhost/d' ${spark_home}/${spark_hadoop_version}/conf/workers; echo $(cat /etc/hosts | grep ${spark_master_nodes} | awk 'NR==1{print $1}') >> ${spark_home}/${spark_hadoop_version}/conf/workers"
+        remote_call ${spark_node} ${USER} "echo SPARK_MASTER_HOST=$(cat /etc/hosts | grep ${spark_master_nodes} | awk 'NR==1{print $1}') >> ${spark_home}/${spark_hadoop_version}/conf/spark-env.sh"
+        remote_call ${spark_node} ${USER} "echo export JAVA_HOME=${spark_java_home} >> ${spark_home}/${spark_hadoop_version}/conf/spark-env.sh"
 
 
         # 启动 spark

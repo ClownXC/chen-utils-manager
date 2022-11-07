@@ -52,7 +52,7 @@ if ! command -v expect >/dev/null 2>&1; then
     yum -y install expect &> /dev/null
 fi
 
-[[ ! -f /root/.ssh/id_rsa.pub ]] && ssh-keygen -t rsa -N '' -f /root/.ssh/id_rsa.pub -q &>/dev/null
+[[ ! -f /root/.ssh/id_rsa ]] && ssh-keygen -t rsa -N '' -f /root/.ssh/id_rsa -q &>/dev/null
 # 第三步：利用SSH非免密在所有需管理主机上创建用户、设置密码
 if ! command -v sshpass >/dev/null 2>&1; then
     echo "sshpass not exists"

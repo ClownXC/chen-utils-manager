@@ -152,10 +152,10 @@ function java_install
         done 
     elif [ ${mode} == "remote" ]; then
         local remote_path=$(get_component_nodes ${java_properties_map["remote_path"]})
-        xcall "${java_nodes}" ${USER} "wget ${remote_path} -P ${home}"
+        xcall "${java_nodes}" ${USER} "wget ${remote_path} -P ${home} -q"
     fi
     xcall "${java_nodes}" ${USER} 'for open_jdk_pkg in `rpm -qa | egrep "^java-1.*.0-openjdk-"`;do echo ${open_jdk_pkg}; rpm -e --nodeps ${open_jdk_pkg}; done'
-    xcall "${java_nodes}" ${USER} "tar -zxf ${home}/jdk-8u241-linux-x64.tar.gz -C ${home}/"
+    xcall "${java_nodes}" ${USER} "tar -zxf ${home}/jdk-8u241-linux-x64.tar.gz -C ${home}/" > /dev/null
     J_HOME=${home}/jdk1.8.0_241
     if [ $? -eq 0 ]; then
         xcall "${java_nodes}" ${USER} "echo export JAVA_HOME=${J_HOME} >> ${PROFILE_FILE}"
@@ -172,10 +172,11 @@ function scala_install
 {
     declare -A scala_properties_map=$(get_properties_of_component scala)
     local scala_nodes=$(get_component_nodes ${scala_properties_map["node"]})
+    local remote_url=$(get_component_nodes ${scala_properties_map["remote_url"]})
     echo "scala nodes: ${scala_nodes}"
     local scala_version=${scala_properties_map["version"]}
     if [ "${scala_version}" == "2.12" ]; then
-        scala_version="2.12.14"
+        scala_version="2.12.17"
         scala_pkg_path="${scala_properties_map["pkg_path"]}/scala-${scala_version}.tgz"
         
     elif [ "${scala_version}" == "2.11" ]; then
@@ -189,14 +190,15 @@ function scala_install
         for node in ${scala_nodes}; do
             scp ${scala_pkg_path} ${USER}@${node}:${scala_home}
         done
-    elif [ "${scala_mode}" == "download" ]; then
-        xcall "${scala_nodes}" ${USER} "wget -P ${scala_home} https://downloads.lightbend.com/scala/${scala_version}/scala-${scala_version}.tgz"
+    elif [ "${scala_mode}" == "remote" ]; then
+        # xcall "${scala_nodes}" ${USER} "wget -P ${scala_home} https://downloads.lightbend.com/scala/${scala_version}/scala-${scala_version}.tgz"
+        xcall "${scala_nodes}" ${USER} "wget -P ${scala_home} ${remote_url} -q"
     fi
     xcall "${scala_nodes}" ${USER} "tar -zxf ${scala_home}/scala-${scala_version}.tgz -C ${scala_home}/"
     S_HOME=${scala_home}/scala-${scala_version}
     if [ $? -eq 0 ]; then
         xcall "${scala_nodes}" ${USER} "echo export SCALA_HOME=${S_HOME} >> ${PROFILE_FILE}"
-        xcall "${scala_nodes}" ${USER} "echo export PATH='\$PATH':/usr/local/opt/scala/scala-2.12.14/bin >> ${PROFILE_FILE}"
+        xcall "${scala_nodes}" ${USER} "echo export PATH='\$PATH':/usr/local/opt/scala/${scala_version}/bin >> ${PROFILE_FILE}"
         xcall "${scala_nodes}" ${USER} "source ${PROFILE_FILE}"
     fi
 }
@@ -218,11 +220,11 @@ if [ $? -eq 0 ]; then
         echo "ssh nodes: ${ssh_nodes}"
         root_password=$(get_component_nodes ${ssh_properties_map["root_password"]})
         ssh_user=$(get_component_nodes ${ssh_properties_map["ssh_user"]})
-        sh ${COMMON_PATH}/ssh/ssh_login.sh  "${HOME_DIR}" "${ssh_user}" "${root_password}" "${ssh_nodes}" &> /dev/null
+        sh ${COMMON_PATH}/ssh/ssh_login.sh  "${HOME_DIR}" "${ssh_user}" "${root_password}" "${ssh_nodes}" > /dev/null
 
         for node in ${ssh_nodes}; do
             scp ${COMMON_PATH}/ssh/ssh_login.sh root@${node}:/root
-            remote_call ${node} ${USER} "sh /root/ssh_login.sh ${HOME_DIR} ${ssh_user} ${root_password} \"${ssh_nodes}\"" &> /dev/null
+            remote_call ${node} ${USER} "sh /root/ssh_login.sh ${HOME_DIR} ${ssh_user} ${root_password} \"${ssh_nodes}\"" > /dev/null
         done
 
     fi
@@ -254,6 +256,12 @@ if [ $? -eq 0 ]; then
                         echo "size: ${#masters[@]}"
                         for((i=1; i<=${#masters[@]}; i++)); do
                             xcall "${hosts_nodes}" ${USER} "echo ${key}${i} ${masters[i-1]} >> /etc/hosts"
+                        done
+                    elif [ ${hosts_val} == "master" ]; then
+                        masters=(${MASTER_NODE_LIST})
+                        echo "size: ${#masters[@]}"
+                        for((i=1; i<=${#masters[@]}; i++)); do
+                            xcall "${hosts_nodes}" ${USER} "echo ${key} ${masters[i-1]} >> /etc/hosts"
                         done
                     elif [ ${hosts_val} == "all..." ]; then
                         alls=(${ALL_NODE_LIST})
