@@ -246,7 +246,7 @@ if [ $? -eq 0 ]; then
         echo "install node===: ${spark_node}"
         remote_call ${spark_node} ${USER} "[[ ! -d ${spark_home} ]] && mkdir -p ${spark_home} "
         if [ "${spark_install_mode}" == "local" ]; then
-            scp ${pkg_path}/${spark_version}.tgz ${USER}@${spark_node}:${spark_home}
+            scp ${pkg_path}/${spark_hadoop_version}.tgz ${USER}@${spark_node}:${spark_home}
         elif [ "${spark_install_mode}" == "remote" ]; then
             remote_call ${spark_node} ${USER} "[[ -f \"${spark_home}/${spark_hadoop_version}.tgz\" ]] && rm -f ${spark_home}/${spark_hadoop_version}.tgz "
             echo "node: ${spark_node} 正在下载: ${spark_hadoop_version}.tgz, waiting..."
