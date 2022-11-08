@@ -35,6 +35,9 @@ function get_deploy_modules
     echo "${MODULES_LIST}"
 }
 
+
+
+
 function get_deploy_nodes
 {
     NODE_LIST=$(sed -n '/\[node\]/,/\[.*\]/p' ${HOME_DIR}/${CONFIG_FILE} | egrep -v "(^$|\[.*\])")
@@ -202,7 +205,6 @@ fi
 #----------------------------------------------------------Tool----------------------------------------------------------
 
 is_module_in_config ${TOOL}
-echo "${TOOL_PATH}/${TOOL_INSTALL_FILE}"
 if [ $? -eq 0 ]; then
     if [ ! -e ${TOOL_PATH}/${TOOL_INSTALL_FILE} ]; then
         echo -e "${RED} Error: ${CONFIG_FILE} is not exist, Please Check......${COLOR_END}"
@@ -255,8 +257,11 @@ if [ $? -eq 0 ]; then
         remote_call ${spark_node} ${USER} "cp ${spark_home}/${spark_hadoop_version}/conf/workers.template ${spark_home}/${spark_hadoop_version}/conf/workers"
         remote_call ${spark_node} ${USER} "cp ${spark_home}/${spark_hadoop_version}/conf/spark-env.sh.template ${spark_home}/${spark_hadoop_version}/conf/spark-env.sh"
         # # 目前只支持一个 master
-        remote_call ${spark_node} ${USER} "sed -i '/^localhost/d' ${spark_home}/${spark_hadoop_version}/conf/workers; echo $(cat /etc/hosts | grep ${spark_master_nodes} | awk 'NR==1{print $1}') >> ${spark_home}/${spark_hadoop_version}/conf/workers"
-        remote_call ${spark_node} ${USER} "echo SPARK_MASTER_HOST=$(cat /etc/hosts | grep ${spark_master_nodes} | awk 'NR==1{print $1}') >> ${spark_home}/${spark_hadoop_version}/conf/spark-env.sh"
+        for s_node in ${spark_nodes[@]}; do
+            remote_call ${spark_node} ${USER} "sed -i '/^localhost/d' ${spark_home}/${spark_hadoop_version}/conf/workers; echo \$(cat /etc/hosts | grep ${s_node} | awk 'NR==1{print \$2}') >> ${spark_home}/${spark_hadoop_version}/conf/workers"
+        done
+
+        remote_call ${spark_node} ${USER} "echo SPARK_MASTER_HOST=\$(cat /etc/hosts | grep ${spark_master_nodes} | awk 'NR==1{print \$2}') >> ${spark_home}/${spark_hadoop_version}/conf/spark-env.sh"
         remote_call ${spark_node} ${USER} "echo export JAVA_HOME=${spark_java_home} >> ${spark_home}/${spark_hadoop_version}/conf/spark-env.sh"
 
 

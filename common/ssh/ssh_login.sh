@@ -15,7 +15,6 @@ function xcall
 }
 
 
-
 if [ $# -lt 2 ];then
     echo "Usage: sh $0 username userpass"
     exit 1
@@ -30,6 +29,8 @@ USER_PASS=$1
 shift
 HOST_LIST=$@
 echo "host: ${HOST_LIST}"
+
+
 
 
 # echo 颜色

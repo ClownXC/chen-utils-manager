@@ -198,7 +198,7 @@ function scala_install
     S_HOME=${scala_home}/scala-${scala_version}
     if [ $? -eq 0 ]; then
         xcall "${scala_nodes}" ${USER} "echo export SCALA_HOME=${S_HOME} >> ${PROFILE_FILE}"
-        xcall "${scala_nodes}" ${USER} "echo export PATH='\$PATH':/usr/local/opt/scala/${scala_version}/bin >> ${PROFILE_FILE}"
+        xcall "${scala_nodes}" ${USER} "echo export PATH='\$PATH':/usr/local/opt/scala-${scala_version}/bin >> ${PROFILE_FILE}"
         xcall "${scala_nodes}" ${USER} "source ${PROFILE_FILE}"
     fi
 }
@@ -219,8 +219,11 @@ if [ $? -eq 0 ]; then
         ssh_nodes=$(get_component_nodes ${ssh_properties_map["node"]})
         echo "ssh nodes: ${ssh_nodes}"
         root_password=$(get_component_nodes ${ssh_properties_map["root_password"]})
+        echo "password: ${root_password}"
         ssh_user=$(get_component_nodes ${ssh_properties_map["ssh_user"]})
+        echo "ssh user: ${ssh_user}"
         sh ${COMMON_PATH}/ssh/ssh_login.sh  "${HOME_DIR}" "${ssh_user}" "${root_password}" "${ssh_nodes}" > /dev/null
+        echo "COMMON_PATH: ${COMMON_PATH}"
 
         for node in ${ssh_nodes}; do
             scp ${COMMON_PATH}/ssh/ssh_login.sh root@${node}:/root
@@ -249,29 +252,29 @@ if [ $? -eq 0 ]; then
                         workers=(${WORKER_NODE_LIST})
                         echo "size: ${#workers[@]}"
                         for((i=1; i<=${#workers[@]}; i++)); do
-                            xcall "${hosts_nodes}" ${USER} "echo ${key}${i} ${workers[i-1]} >> /etc/hosts"
+                            xcall "${hosts_nodes}" ${USER} "echo ${workers[i-1]} ${key}${i} >> /etc/hosts"
                         done
                     elif [ ${hosts_val} == "master..." ]; then
                         masters=(${MASTER_NODE_LIST})
                         echo "size: ${#masters[@]}"
                         for((i=1; i<=${#masters[@]}; i++)); do
-                            xcall "${hosts_nodes}" ${USER} "echo ${key}${i} ${masters[i-1]} >> /etc/hosts"
+                            xcall "${hosts_nodes}" ${USER} "echo ${masters[i-1]} ${key}${i} >> /etc/hosts"
                         done
                     elif [ ${hosts_val} == "master" ]; then
                         masters=(${MASTER_NODE_LIST})
                         echo "size: ${#masters[@]}"
                         for((i=1; i<=${#masters[@]}; i++)); do
-                            xcall "${hosts_nodes}" ${USER} "echo ${key} ${masters[i-1]} >> /etc/hosts"
+                            xcall "${hosts_nodes}" ${USER} "echo ${masters[i-1]} ${key} >> /etc/hosts"
                         done
                     elif [ ${hosts_val} == "all..." ]; then
                         alls=(${ALL_NODE_LIST})
                         echo "size: ${#alls[@]}"
                         for((i=1; i<=${#alls[@]}; i++)); do
-                            xcall "${hosts_nodes}" ${USER} "echo ${key}${i} ${alls[i-1]} >> /etc/hosts"
+                            xcall "${hosts_nodes}" ${USER} "echo ${alls[i-1]} ${key}${i} >> /etc/hosts"
                         done
 
                     else
-                        xcall "${hosts_nodes}" ${USER} "echo ${key} ${hosts_val} >> /etc/hosts"
+                        xcall "${hosts_nodes}" ${USER} "echo ${hosts_val} ${key} >> /etc/hosts"
                     fi
                     
                 fi
@@ -297,8 +300,12 @@ if [ $? -eq 0 ]; then
                         for ((i=1; i<=${#alls[@]}; i++)); do
                             remote_call ${alls[i-1]} ${USER} "hostnamectl set-hostname ${key}${i}"
                         done
+                    elif [ ${hosts_val} == "master" ]; then
+                        masters=${MASTER_NODE_LIST}
+                        echo "size: ${#masters[@]}"
+                        remote_call "${masters}" ${USER} "hostnamectl set-hostname ${key}"
                     else
-                        remote_call ${hosts_val} ${USER} "hostnamectl set-hostname ${key} >> /etc/hosts"
+                        remote_call ${hosts_val} ${USER} "hostnamectl set-hostname ${key}"
                     fi
                     
                 fi
